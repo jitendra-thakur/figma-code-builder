@@ -148,4 +148,10 @@ npm test
 npm pack --dry-run
 ```
 
-Releases are triggered when a pull request is merged into `main`. Update `version` in both `package.json` and `package-lock.json` in the pull request. The workflow tags that merged version, tests and packs it, then publishes it to npm. The version must be new, and the GitHub Actions repository secret `NPM_TOKEN` must have permission to publish the package. See [GitHub Actions](https://github.com/jitendra-thakur/figma-code-builder/actions) for workflow runs.
+### Automated staged releases
+
+Version `1.0.0` has already been approved and published. For every later release, update the version in both `package.json` and `package-lock.json` in a pull request to `main` (next version: `1.0.1`). After the PR is merged, GitHub Actions tags the merge, runs tests, packs the tagged source, verifies the tarball version, and stages the exact tarball on npm for maintainer approval. It does not directly publish a version or push a version-bump commit to `main`.
+
+Configure **npm package Settings → Trusted Publisher → GitHub Actions** with owner `jitendra-thakur`, repository `figma-code-builder`, and workflow filename `release-npm-package.yml`. The publishing job uses OIDC and does not need the `NPM_TOKEN` secret. Ensure the trusted publisher allows `npm stage publish`; direct `npm publish` permission is not required. Approve each staged release under **Staged Packages** on npmjs.com (or use `npm stage list figma-code-builder` followed by `npm stage approve <stage-id>`). Approval requires npm 2FA and makes that version public. Never retry a version that is already published.
+
+The workflow requires npm CLI 11.15+ and Node.js 22.14+ for staged publishing; it installs current npm on its Node.js 24 runner. See [GitHub Actions](https://github.com/jitendra-thakur/figma-code-builder/actions) for workflow runs.

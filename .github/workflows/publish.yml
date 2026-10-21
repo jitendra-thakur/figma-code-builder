@@ -1,4 +1,4 @@
-name: Publish npm package
+name: Stage npm package for approval
 
 on:
   workflow_call:
@@ -42,11 +42,22 @@ jobs:
           fi
 
           PACKAGE_INFO="$(tar -xOf "$TARBALL" package/package.json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const p=JSON.parse(s);console.log(`${p.name} ${p.version}`)})')"
+          PACKAGE_NAME="${PACKAGE_INFO% *}"
           TARBALL_VERSION="${PACKAGE_INFO##* }"
           if [[ "$TARBALL_VERSION" != "$RELEASE_VERSION" ]]; then
             echo "Tarball version $TARBALL_VERSION does not match release $RELEASE_VERSION."
             exit 1
           fi
 
-      - name: Publish package
-        run: npm publish ./dist/*.tgz --access public
+          if npm view "$PACKAGE_NAME@$RELEASE_VERSION" version >/dev/null 2>&1; then
+            echo "::error::$PACKAGE_NAME@$RELEASE_VERSION is already published. Bump package.json and package-lock.json to a new version before releasing."
+            exit 1
+          fi
+
+      - name: Stage package for maintainer approval
+        run: |
+          TARBALL="$(find dist -maxdepth 1 -type f -name '*.tgz' -print -quit)"
+          mkdir -p staged-package
+          tar -xzf "$TARBALL" -C staged-package
+          cd staged-package/package
+          npm stage publish --access public

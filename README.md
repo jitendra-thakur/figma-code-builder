@@ -1,109 +1,151 @@
-# figma-code-builder
+# Figma Code Builder
 
-AI agent kit that turns **Figma designs into Angular, React or Vue code** using your design system. It installs custom agents and skills into your project's `.github/` folder for GitHub Copilot (VS Code agent mode) and wires up the Figma MCP server.
+Turn Figma designs into implementation-ready **Angular, React, or Vue.js features** with GitHub Copilot in VS Code. Figma Code Builder installs framework-specific Copilot agents and skills into your project. The agents inspect your existing codebase, use your design system, and help translate the selected Figma screen into code that fits your project.
 
-## Quick start
+> This package provides instructions and Figma MCP configuration for GitHub Copilot. It does not generate or run an application by itself; use the installed agents inside your application repository.
+
+## Requirements
+
+- Node.js 18 or later
+- VS Code with GitHub Copilot and Agent Mode
+- A project using Angular, React, or Vue.js
+- Access to the Figma file you want to implement
+
+## Install in your application
+
+Open a terminal in the root of your application project and run:
 
 ```bash
-cd your-project
 npx figma-code-builder init
 ```
 
-The wizard asks:
+The setup wizard guides you through the choices below. You do not need to install this package as a dependency in your application.
 
-1. Which agent(s): Angular, React, Vue.js
-2. Which design system(s): Vuetify, Material
-3. Whether to configure an **organization-level design system** (package, prefix, docs URL, tokens path, extra rules)
-4. How to connect to Figma: official remote MCP (OAuth), MCP with a personal access token, or skip
-5. i18n locales (for example `en,sv,de`)
+### 1. Choose your framework agent
 
-### What gets installed
+Choose one or more agents:
 
-```
+- **Angular** — builds Angular features using your app's Angular version and conventions.
+- **React** — builds React and TypeScript features using your app's router, styling, and data conventions.
+- **Vue.js** — builds Vue 3 features and follows your app's Vue, routing, and component conventions.
+
+### 2. Choose a design system
+
+Select one or more libraries if they apply to your project:
+
+- **Material** — Angular Material or MUI, depending on your framework.
+- **Vuetify** — for Vue.js projects.
+
+You can skip public libraries if you use your own component library or want framework defaults.
+
+### 3. Add your organization design system (optional)
+
+If your company has a component library, provide its name and any available npm package, component prefix, documentation or Storybook URL, design-token path, and extra rules. The agent treats this as the primary design system and uses public libraries only when your own library does not provide an appropriate component.
+
+### 4. Connect to Figma
+
+Choose how the agent should access your design:
+
+- **Figma remote MCP (recommended):** uses Figma's remote MCP server. VS Code will ask you to sign in and authorize access.
+- **Figma MCP with a personal access token:** VS Code requests the token as a secret input when the MCP server starts. Never paste the token into source files or commit it.
+- **Skip:** choose this if you will configure Figma access yourself.
+
+The Figma account you authorize must have permission to view the design file.
+
+### 5. Set locales
+
+Enter comma-separated locales, such as `en,sv,de`. The first locale is the default. The agent follows your project's existing i18n library and conventions where available.
+
+## What gets installed
+
+The installer writes files into your application project:
+
+```text
 .github/
-  agents/figma-code-angular-builder.agent.md
-  agents/figma-code-react-builder.agent.md
-  agents/figma-code-vuejs-builder.agent.md
-  skills/figma/SKILL.md
-  skills/accessibility/SKILL.md
-  skills/designsytem/SKILL.md      # generated from your answers
-  skills/vuetifyjs/SKILL.md        # if selected
-  skills/material/SKILL.md         # if selected
-  figma-code-builder.json          # your choices, read by the agents
-.vscode/mcp.json                   # Figma MCP server entry
+  agents/
+    figma-code-angular-builder.agent.md  # if selected
+    figma-code-react-builder.agent.md    # if selected
+    figma-code-vuejs-builder.agent.md    # if selected
+  skills/
+    figma/SKILL.md
+    accessibility/SKILL.md
+    designsytem/SKILL.md                 # generated from your selections
+    material/SKILL.md                    # if selected
+    vuetifyjs/SKILL.md                   # if selected
+  figma-code-builder.json               # selected agents, systems, Figma, and locales
+.vscode/
+  mcp.json                               # Figma MCP entry, unless skipped
 ```
 
-Only the agents you pick are installed. Existing files are never overwritten without confirmation (`--force` to override).
+Only selected agents and libraries are installed. Existing files are not silently overwritten: the wizard asks before replacing them. Use `--force` only when you want to overwrite existing generated files.
 
-### Non-interactive
+## Use the agent
+
+1. Open the application project in VS Code.
+2. If you configured Figma MCP, start the **figma** server from VS Code and complete the sign-in or token prompt.
+3. Open GitHub Copilot Chat, switch to **Agent** mode, and select the installed framework agent (for example, **Figma to React Builder**).
+4. Provide the Figma URL or frame/node link, where the feature should go, and any route or behavior requirements.
+5. Review the generated changes, run your project's checks, and ask the agent to refine anything that does not match the design or project conventions.
+
+### Example prompt
+
+> Implement this Figma screen: https://www.figma.com/design/FILE_KEY/Orders?node-id=12-34. Use the React agent. Put the feature in `src/features/orders`, add it to the existing router at `/orders`, and reuse our existing table, button, and spacing tokens. The table should show loading, empty, and error states. Do not change unrelated files.
+
+For the most accurate result, include the exact frame, route, destination folder, interactions, data fields, and existing components the feature should reuse. If you have desktop and mobile frames, include both links.
+
+## What the agents do
+
+Each framework agent is instructed to:
+
+- Inspect your project and use APIs supported by its installed framework and dependency versions.
+- Read the selected Figma frame, including layout, text, assets, variables/tokens, and interaction states when available.
+- Map design elements to your organization library or selected public design system instead of inventing components or tokens.
+- Follow your project structure, routing, styling, data-fetching, forms, and testing conventions.
+- Apply accessibility guidance, including semantic markup, keyboard/focus behavior, labels, and contrast.
+- Follow your configured locale and existing i18n conventions.
+- Summarize the files changed, design-system mapping, assumptions, and checks performed.
+
+The agent asks for missing information when necessary. Figma and code generation are not guaranteed to be pixel-perfect; review the result in your application and compare it with the source design.
+
+## Non-interactive setup
+
+For scripts or repeatable setup, provide the required `--agents` option. This example installs the Angular and React agents with Material and remote Figma MCP:
 
 ```bash
-npx figma-code-builder init -y \
-  --agents angular,react \
-  --design-system material \
-  --org-name "Acme UI" --org-package @acme/ui --org-prefix acme \
-  --figma mcp-remote --locales en,sv
+npx figma-code-builder init --yes --agents angular,react --design-system material --figma mcp-remote --locales en,sv
 ```
 
-## What the agent does
-
-1. Fetches the Figma design (figma skill, MCP or API)
-2. Maps elements to your design system / component library
-3. Generates the feature structure: routing, components, services, models
-4. Applies design tokens
-5. Adds i18n keys for English and the other configured languages
-6. Adds accessibility attributes (accessibility skill)
-
-## Tips for best results
-
-- **Name the feature folder** so files land in the right place.
-- **Mention the route path** to have it wired into routing.
-- **Share data model info** so accurate TypeScript interfaces are generated.
-
-Example prompt:
-
-> Build the screen from https://www.figma.com/design/XXXX?node-id=12-34. Feature folder: `src/app/features/orders`, route: `/orders`. Order has id, customer, items[], total, status.
-
-## Figma access
-
-- **mcp-remote**: official Figma MCP server (`https://mcp.figma.com/mcp`), sign in when VS Code asks.
-- **mcp-token**: runs `figma-developer-mcp` and prompts for your personal access token (Figma, Settings, Security). The token is requested by VS Code and not stored in the repo.
-
-## Note about `npm install`
-
-npm does not allow interactive prompts from install scripts (no TTY, and output is hidden for dependencies). So installing the package only prints a hint; run `npx figma-code-builder init` for the wizard.
-
-## Develop and publish
+Use `--cwd` to target another project directory and `--force` to replace existing generated files:
 
 ```bash
-npm install
-node bin/cli.js init --cwd /tmp/demo     # try it
-npm pack --dry-run                       # check package contents
+npx figma-code-builder init --yes --agents vuejs --design-system vuetifyjs --cwd ../my-vue-app --force
 ```
 
-- Check the name is free first: `npm view figma-code-builder`. If taken, use a scope: change `name` to `@your-org/figma-code-builder`.
-- Before the first release, replace the placeholder `YOUR-ORG` GitHub URLs in `package.json` with the real repository URLs.
-- Configure an npm access token as the GitHub repository Actions secret `NPM_TOKEN`. Use a granular token with permission to publish this package, and enable 2FA on your npm account.
-- To start an automated release, open **Actions → Release npm package → Run workflow**, select the release branch, and choose `patch`, `minor`, or `major`. The workflow updates `package.json` and `package-lock.json`, commits the version bump, creates a matching `vX.Y.Z` tag, tests and packs the tagged source, then publishes the tarball with npm provenance. Publishing stops if tests fail, the versions disagree, or that version is already on npm.
-
-### Release a new version
-
-For a local/manual release, run one of these commands to increment the version in `package.json` and `package-lock.json` and create a matching Git tag:
+See all supported choices with:
 
 ```bash
-npm version patch   # 0.1.0 -> 0.1.1, for fixes
-npm version minor   # 0.1.0 -> 0.2.0, for backward-compatible features
-npm version major   # 0.1.0 -> 1.0.0, for breaking changes
+npx figma-code-builder list
 ```
 
-Push the version commit and tag to GitHub:
+## Troubleshooting
 
-```bash
-git push --follow-tags
-```
-
-You can also publish manually with `npm login` followed by `npm publish --access public`; the automated workflow is optional.
+- **The wizard says there is no interactive terminal:** run the command in a terminal, or use `--yes` with `--agents` as shown above.
+- **The Figma server is not available:** open `.vscode/mcp.json`, confirm the `figma` entry exists, then start it from VS Code. Sign in if prompted and check that your account can access the Figma file.
+- **The agent cannot find the design:** share the full Figma design URL, including the `node-id` for the exact frame, and verify your account has access.
+- **The wrong components or styles are used:** provide the component-library name, docs URL, token location, and examples of the components the agent should reuse; then rerun the prompt with those details.
+- **An existing file was skipped:** rerun setup and confirm the overwrite prompt, or use `--force` if you intend to replace generated files.
 
 ## License
 
-MIT
+MIT. See [LICENSE](LICENSE).
+
+## Maintainers: develop and release
+
+This package does not have a separate compilation step. From the package repository, run tests and preview the files npm will include:
+
+```bash
+npm test
+npm pack --dry-run
+```
+
+Releases are triggered when a pull request is merged into `main`. Update `version` in both `package.json` and `package-lock.json` in the pull request. The workflow tags that merged version, tests and packs it, then publishes it to npm. The version must be new, and the GitHub Actions repository secret `NPM_TOKEN` must have permission to publish the package. See [GitHub Actions](https://github.com/jitendra-thakur/figma-code-builder/actions) for workflow runs.

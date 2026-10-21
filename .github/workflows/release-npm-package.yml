@@ -1,0 +1,51 @@
+name: Release npm package
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Version increment to apply
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    uses: ./.github/workflows/version.yml
+    with:
+      bump: ${{ inputs.bump }}
+    permissions:
+      contents: write
+
+  tag:
+    needs: version
+    uses: ./.github/workflows/tag.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+    permissions:
+      contents: write
+
+  build-pack:
+    needs: [version, tag]
+    uses: ./.github/workflows/build-pack.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+    permissions:
+      contents: read
+
+  publish:
+    needs: [version, build-pack]
+    uses: ./.github/workflows/publish.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+    secrets:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+    permissions:
+      contents: read
+      id-token: write

@@ -7,15 +7,19 @@ on:
         description: Package version to tag
         required: true
         type: string
+      ref:
+        description: Merged commit to tag
+        required: true
+        type: string
 
 jobs:
   tag:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out release branch
+      - name: Check out merged commit
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ inputs.ref }}
           fetch-depth: 0
 
       - name: Confirm checked-out package version
@@ -31,8 +35,9 @@ jobs:
       - name: Create and push release tag
         env:
           RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_REF: ${{ inputs.ref }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "v$RELEASE_VERSION" -m "Release v$RELEASE_VERSION"
+          git tag -a "v$RELEASE_VERSION" "$RELEASE_REF" -m "Release v$RELEASE_VERSION"
           git push origin "v$RELEASE_VERSION"

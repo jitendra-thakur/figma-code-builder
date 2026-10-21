@@ -1,33 +1,32 @@
 name: Release npm package
 
 on:
-  workflow_dispatch:
-    inputs:
-      bump:
-        description: Version increment to apply
-        required: true
-        type: choice
-        options:
-          - patch
-          - minor
-          - major
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
 
 permissions:
   contents: read
 
+concurrency:
+  group: npm-release-main
+  cancel-in-progress: false
+
 jobs:
   version:
+    if: github.event.pull_request.merged == true
     uses: ./.github/workflows/version.yml
     with:
-      bump: ${{ inputs.bump }}
-    permissions:
-      contents: write
+      ref: ${{ github.event.pull_request.merge_commit_sha }}
 
   tag:
     needs: version
     uses: ./.github/workflows/tag.yml
     with:
       version: ${{ needs.version.outputs.version }}
+      ref: ${{ github.event.pull_request.merge_commit_sha }}
     permissions:
       contents: write
 

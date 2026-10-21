@@ -31,8 +31,8 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/YOUR-ORG/figma-code-builder.git"
+    "url": "git+https://github.com/jitendra-thakur/figma-code-builder.git"
   },
-  "bugs": { "url": "https://github.com/YOUR-ORG/figma-code-builder/issues" },
-  "homepage": "https://github.com/YOUR-ORG/figma-code-builder#readme"
+  "bugs": { "url": "https://github.com/jitendra-thakur/figma-code-builder/issues" },
+  "homepage": "https://github.com/jitendra-thakur/figma-code-builder#readme"
 }

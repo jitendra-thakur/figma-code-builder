@@ -75,16 +75,23 @@ jobs:
           RELEASE_BRANCH: ${{ steps.version.outputs.branch }}
         run: |
           if git ls-remote --exit-code --heads origin "$RELEASE_BRANCH" >/dev/null 2>&1; then
-            echo "Remote branch $RELEASE_BRANCH already exists but has no open release PR. Inspect or remove it before retrying."
-            exit 1
+            git fetch origin "$RELEASE_BRANCH"
+            git switch --track "origin/$RELEASE_BRANCH"
+            BRANCH_VERSION="$(node -p "require('./package.json').version")"
+            LOCK_VERSION="$(node -p "require('./package-lock.json').version")"
+            if [[ "$BRANCH_VERSION" != "$RELEASE_VERSION" || "$LOCK_VERSION" != "$RELEASE_VERSION" ]]; then
+              echo "Existing branch $RELEASE_BRANCH has package versions $BRANCH_VERSION/$LOCK_VERSION, expected $RELEASE_VERSION. Refusing to reuse it."
+              exit 1
+            fi
+            echo "Reusing existing release branch $RELEASE_BRANCH at version $RELEASE_VERSION."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git switch -c "$RELEASE_BRANCH"
+            git add package.json package-lock.json
+            git commit -m "chore(release): v$RELEASE_VERSION"
+            git push --set-upstream origin "$RELEASE_BRANCH"
           fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git switch -c "$RELEASE_BRANCH"
-          git add package.json package-lock.json
-          git commit -m "chore(release): v$RELEASE_VERSION"
-          git push --set-upstream origin "$RELEASE_BRANCH"
 
       - name: Open release PR
         if: steps.existing.outputs.url == ''

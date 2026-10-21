@@ -75,6 +75,9 @@ jobs:
           RELEASE_BRANCH: ${{ steps.version.outputs.branch }}
         run: |
           if git ls-remote --exit-code --heads origin "$RELEASE_BRANCH" >/dev/null 2>&1; then
+            # npm version modified these files on the temporary main checkout.
+            # Discard only that generated bump before checking out the release branch.
+            git restore --source=HEAD --worktree -- package.json package-lock.json
             git fetch origin "$RELEASE_BRANCH"
             git switch --track "origin/$RELEASE_BRANCH"
             BRANCH_VERSION="$(node -p "require('./package.json').version")"

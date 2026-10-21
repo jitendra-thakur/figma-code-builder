@@ -1,6 +1,6 @@
 {
   "name": "figma-code-builder",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "AI agent kit that turns Figma designs into Angular, React or Vue code using your design system. Installs agents and skills into .github/ for GitHub Copilot / VS Code.",
   "type": "module",
   "bin": {
@@ -25,14 +25,27 @@
     "prompts": "^2.4.2"
   },
   "keywords": [
-    "figma", "figma-mcp", "mcp", "agent", "copilot", "code-generation",
-    "angular", "react", "vue", "vuetify", "material", "design-system", "accessibility"
+    "figma",
+    "figma-mcp",
+    "mcp",
+    "agent",
+    "copilot",
+    "code-generation",
+    "angular",
+    "react",
+    "vue",
+    "vuetify",
+    "material",
+    "design-system",
+    "accessibility"
   ],
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jitendra-thakur/figma-code-builder.git"
   },
-  "bugs": { "url": "https://github.com/jitendra-thakur/figma-code-builder/issues" },
+  "bugs": {
+    "url": "https://github.com/jitendra-thakur/figma-code-builder/issues"
+  },
   "homepage": "https://github.com/jitendra-thakur/figma-code-builder#readme"
 }

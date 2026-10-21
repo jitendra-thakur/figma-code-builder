@@ -19,8 +19,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
-          registry-url: https://registry.npmjs.org
           package-manager-cache: false
+
+      - name: Configure public npm registry without credentials
+        run: printf 'registry=https://registry.npmjs.org/\n' > "$RUNNER_TEMP/npmrc"
 
       - name: Update npm for trusted publishing
         run: npm install --global npm@latest
@@ -34,6 +36,8 @@ jobs:
       - name: Verify tarball version
         env:
           RELEASE_VERSION: ${{ inputs.version }}
+          NPM_CONFIG_USERCONFIG: ${{ runner.temp }}/npmrc
+          NODE_AUTH_TOKEN: ''
         run: |
           TARBALL="$(find dist -maxdepth 1 -type f -name '*.tgz' -print -quit)"
           if [[ -z "$TARBALL" ]]; then
@@ -55,6 +59,9 @@ jobs:
           fi
 
       - name: Stage package for maintainer approval
+        env:
+          NPM_CONFIG_USERCONFIG: ${{ runner.temp }}/npmrc
+          NODE_AUTH_TOKEN: ''
         run: |
           TARBALL="$(find dist -maxdepth 1 -type f -name '*.tgz' -print -quit)"
           mkdir -p staged-package

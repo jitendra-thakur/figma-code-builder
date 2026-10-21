@@ -11,17 +11,22 @@ on:
       version:
         description: New package version without the v prefix
         value: ${{ jobs.version.outputs.version }}
+      should_release:
+        description: Whether this package version is different from the base commit
+        value: ${{ jobs.version.outputs.should_release }}
 
 jobs:
   version:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.read.outputs.version }}
+      should_release: ${{ steps.read.outputs.should_release }}
     steps:
       - name: Check out merged commit
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -42,3 +47,14 @@ jobs:
             exit 1
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          BASE_SHA="$(git rev-parse HEAD^1)"
+          BASE_VERSION="$(git show "$BASE_SHA:package.json" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).version))')"
+          if [[ "$VERSION" == "$BASE_VERSION" ]]; then
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            echo "Package version is unchanged ($VERSION); skipping tag and npm release."
+            exit 0
+          fi
+
+          echo "Package version changed from $BASE_VERSION to $VERSION; proceeding with release."
+          echo "should_release=true" >> "$GITHUB_OUTPUT"

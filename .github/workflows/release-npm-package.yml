@@ -1,0 +1,50 @@
+name: Release npm package
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-release-main
+  cancel-in-progress: false
+
+jobs:
+  version:
+    if: github.event.pull_request.merged == true
+    uses: ./.github/workflows/version.yml
+    with:
+      ref: ${{ github.event.pull_request.merge_commit_sha }}
+
+  tag:
+    needs: version
+    uses: ./.github/workflows/tag.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+      ref: ${{ github.event.pull_request.merge_commit_sha }}
+    permissions:
+      contents: write
+
+  build-pack:
+    needs: [version, tag]
+    uses: ./.github/workflows/build-pack.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+    permissions:
+      contents: read
+
+  publish:
+    needs: [version, build-pack]
+    uses: ./.github/workflows/publish.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+    secrets:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+    permissions:
+      contents: read
+      id-token: write

@@ -1,0 +1,43 @@
+name: Tag package release
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: Package version to tag
+        required: true
+        type: string
+      ref:
+        description: Merged commit to tag
+        required: true
+        type: string
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out merged commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+
+      - name: Confirm checked-out package version
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+          if [[ "$PACKAGE_VERSION" != "$RELEASE_VERSION" ]]; then
+            echo "Package version $PACKAGE_VERSION does not match requested version $RELEASE_VERSION."
+            exit 1
+          fi
+
+      - name: Create and push release tag
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_REF: ${{ inputs.ref }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v$RELEASE_VERSION" "$RELEASE_REF" -m "Release v$RELEASE_VERSION"
+          git push origin "v$RELEASE_VERSION"

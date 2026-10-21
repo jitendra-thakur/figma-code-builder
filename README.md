@@ -79,13 +79,30 @@ npm does not allow interactive prompts from install scripts (no TTY, and output 
 npm install
 node bin/cli.js init --cwd /tmp/demo     # try it
 npm pack --dry-run                       # check package contents
-npm login
-npm publish --access public              # unscoped name: figma-code-builder
 ```
 
 - Check the name is free first: `npm view figma-code-builder`. If taken, use a scope: change `name` to `@your-org/figma-code-builder`.
-- Bump the version with `npm version patch|minor|major` before each publish.
-- Enable 2FA on your npm account; consider `npm publish --provenance` from GitHub Actions.
+- Before the first release, replace the placeholder `YOUR-ORG` GitHub URLs in `package.json` with the real repository URLs.
+- Configure an npm access token as the GitHub repository Actions secret `NPM_TOKEN`. Use a granular token with permission to publish this package, and enable 2FA on your npm account.
+- To start an automated release, open **Actions → Release npm package → Run workflow**, select the release branch, and choose `patch`, `minor`, or `major`. The workflow updates `package.json` and `package-lock.json`, commits the version bump, creates a matching `vX.Y.Z` tag, tests and packs the tagged source, then publishes the tarball with npm provenance. Publishing stops if tests fail, the versions disagree, or that version is already on npm.
+
+### Release a new version
+
+For a local/manual release, run one of these commands to increment the version in `package.json` and `package-lock.json` and create a matching Git tag:
+
+```bash
+npm version patch   # 0.1.0 -> 0.1.1, for fixes
+npm version minor   # 0.1.0 -> 0.2.0, for backward-compatible features
+npm version major   # 0.1.0 -> 1.0.0, for breaking changes
+```
+
+Push the version commit and tag to GitHub:
+
+```bash
+git push --follow-tags
+```
+
+You can also publish manually with `npm login` followed by `npm publish --access public`; the automated workflow is optional.
 
 ## License
 

@@ -1,0 +1,59 @@
+name: Publish npm package
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: Package version to publish
+        required: true
+        type: string
+    secrets:
+      NPM_TOKEN:
+        description: npm access token with publish permission
+        required: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - name: Download package tarball
+        uses: actions/download-artifact@v4
+        with:
+          name: npm-package
+          path: dist
+
+      - name: Verify tarball version
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          TARBALL="$(find dist -maxdepth 1 -type f -name '*.tgz' -print -quit)"
+          if [[ -z "$TARBALL" ]]; then
+            echo "No npm tarball was downloaded."
+            exit 1
+          fi
+
+          PACKAGE_INFO="$(tar -xOf "$TARBALL" package/package.json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const p=JSON.parse(s);console.log(`${p.name} ${p.version}`)})')"
+          PACKAGE_NAME="${PACKAGE_INFO% *}"
+          TARBALL_VERSION="${PACKAGE_INFO##* }"
+          if [[ "$TARBALL_VERSION" != "$RELEASE_VERSION" ]]; then
+            echo "Tarball version $TARBALL_VERSION does not match release $RELEASE_VERSION."
+            exit 1
+          fi
+
+          PUBLISHED_VERSION="$(npm view "$PACKAGE_NAME@$RELEASE_VERSION" version 2>/dev/null || true)"
+          if [[ -n "$PUBLISHED_VERSION" ]]; then
+            echo "$PACKAGE_NAME@$RELEASE_VERSION is already published."
+            exit 1
+          fi
+
+      - name: Publish package
+        run: npm publish ./dist/*.tgz --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

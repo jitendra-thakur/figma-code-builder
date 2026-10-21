@@ -1,0 +1,54 @@
+name: Bump package version
+
+on:
+  workflow_call:
+    inputs:
+      bump:
+        description: Semantic version increment (patch, minor, or major)
+        required: true
+        type: string
+    outputs:
+      version:
+        description: New package version without the v prefix
+        value: ${{ jobs.version.outputs.version }}
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
+    steps:
+      - name: Check out release branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Bump package and lockfile versions
+        id: bump
+        env:
+          VERSION_BUMP: ${{ inputs.bump }}
+        run: |
+          case "$VERSION_BUMP" in
+            patch|minor|major) ;;
+            *) echo "Unsupported version bump: $VERSION_BUMP"; exit 1 ;;
+          esac
+
+          npm version "$VERSION_BUMP" --no-git-tag-version
+          VERSION="$(node -p "require('./package.json').version")"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Commit version change
+        env:
+          RELEASE_VERSION: ${{ steps.bump.outputs.version }}
+          RELEASE_BRANCH: ${{ github.ref_name }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git commit -m "chore(release): v$RELEASE_VERSION"
+          git push origin "HEAD:$RELEASE_BRANCH"

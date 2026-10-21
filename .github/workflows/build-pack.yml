@@ -1,0 +1,51 @@
+name: Build and pack npm package
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: Package version to build
+        required: true
+        type: string
+
+jobs:
+  build-pack:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out release tag
+        uses: actions/checkout@v4
+        with:
+          ref: v${{ inputs.version }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify package version
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+          if [[ "$PACKAGE_VERSION" != "$RELEASE_VERSION" ]]; then
+            echo "Package version $PACKAGE_VERSION does not match release $RELEASE_VERSION."
+            exit 1
+          fi
+
+      - name: Run tests
+        run: npm test
+
+      - name: Create package tarball
+        run: npm pack --pack-destination .
+
+      - name: Upload package tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-package
+          path: '*.tgz'
+          if-no-files-found: error
+          retention-days: 7

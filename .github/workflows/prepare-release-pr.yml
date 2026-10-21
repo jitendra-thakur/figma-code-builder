@@ -1,0 +1,100 @@
+name: Prepare release PR
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Semantic version bump for the release PR
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: prepare-release-pr
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require main branch
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "Run this workflow from the main branch."
+          exit 1
+
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Bump package and lockfile versions
+        id: version
+        env:
+          VERSION_BUMP: ${{ inputs.bump }}
+        run: |
+          npm version "$VERSION_BUMP" --no-git-tag-version
+          VERSION="$(node -p "require('./package.json').version")"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "branch=release/v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Install, test, and preview package
+        run: |
+          npm ci
+          npm test
+          npm pack --dry-run
+
+      - name: Check for an existing release PR
+        id: existing
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_BRANCH: ${{ steps.version.outputs.branch }}
+        run: |
+          PR_URL="$(gh pr list --base main --head "$RELEASE_BRANCH" --state open --json url --jq '.[0].url // empty')"
+          if [[ -n "$PR_URL" ]]; then
+            echo "url=$PR_URL" >> "$GITHUB_OUTPUT"
+            echo "An open release PR already exists: $PR_URL"
+          fi
+
+      - name: Create release branch and commit
+        if: steps.existing.outputs.url == ''
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          RELEASE_BRANCH: ${{ steps.version.outputs.branch }}
+        run: |
+          if git ls-remote --exit-code --heads origin "$RELEASE_BRANCH" >/dev/null 2>&1; then
+            echo "Remote branch $RELEASE_BRANCH already exists but has no open release PR. Inspect or remove it before retrying."
+            exit 1
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$RELEASE_BRANCH"
+          git add package.json package-lock.json
+          git commit -m "chore(release): v$RELEASE_VERSION"
+          git push --set-upstream origin "$RELEASE_BRANCH"
+
+      - name: Open release PR
+        if: steps.existing.outputs.url == ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          RELEASE_BRANCH: ${{ steps.version.outputs.branch }}
+        run: |
+          gh pr create \
+            --base main \
+            --head "$RELEASE_BRANCH" \
+            --title "chore(release): v$RELEASE_VERSION" \
+            --body "Automated ${{ inputs.bump }} release version bump to v$RELEASE_VERSION. Review and merge this PR to trigger the npm staged-release workflow."

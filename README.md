@@ -150,7 +150,9 @@ npm pack --dry-run
 
 ### Automated staged releases
 
-Version `1.0.0` has already been approved and published. For every later release, update the version in both `package.json` and `package-lock.json` in a pull request to `main` (next version: `1.0.1`). After the PR is merged, GitHub Actions tags the merge, runs tests, packs the tagged source, verifies the tarball version, and stages the exact tarball on npm for maintainer approval. It does not directly publish a version or push a version-bump commit to `main`.
+Version `1.0.0` has already been approved and published. Ordinary code pull requests do not publish a release: the workflow compares the merged version with the base version and skips tagging/staging when it is unchanged.
+
+To prepare a release, open **Actions → Prepare release PR → Run workflow**, choose `patch`, `minor`, or `major`, and run it from `main`. The workflow updates `package.json` and `package-lock.json` on a separate `release/vX.Y.Z` branch, tests and previews the package, then opens a PR; it never pushes version changes directly to `main`. Review and merge the generated PR to trigger tagging, packing, and npm staging. For example, after `1.0.0`, choose `patch` to prepare `1.0.1`. Allow Actions to create pull requests under **Settings → Actions → General → Workflow permissions → Allow GitHub Actions to create and approve pull requests**.
 
 Configure **npm package Settings → Trusted Publisher → GitHub Actions** with owner `jitendra-thakur`, repository `figma-code-builder`, and workflow filename `release-npm-package.yml`. The publishing job uses OIDC and does not need the `NPM_TOKEN` secret. Ensure the trusted publisher allows `npm stage publish`; direct `npm publish` permission is not required. Approve each staged release under **Staged Packages** on npmjs.com (or use `npm stage list figma-code-builder` followed by `npm stage approve <stage-id>`). Approval requires npm 2FA and makes that version public. Never retry a version that is already published.
 

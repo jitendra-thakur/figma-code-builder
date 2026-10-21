@@ -6,6 +6,12 @@ on:
       - closed
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      release_ref:
+        description: Existing release tag or commit to publish (for example v1.0.0)
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -16,17 +22,17 @@ concurrency:
 
 jobs:
   version:
-    if: github.event.pull_request.merged == true
+    if: (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || github.event.pull_request.merged == true
     uses: ./.github/workflows/version.yml
     with:
-      ref: ${{ github.event.pull_request.merge_commit_sha }}
+      ref: ${{ inputs.release_ref || github.event.pull_request.merge_commit_sha }}
 
   tag:
     needs: version
     uses: ./.github/workflows/tag.yml
     with:
       version: ${{ needs.version.outputs.version }}
-      ref: ${{ github.event.pull_request.merge_commit_sha }}
+      ref: ${{ inputs.release_ref || github.event.pull_request.merge_commit_sha }}
     permissions:
       contents: write
 
@@ -43,8 +49,6 @@ jobs:
     uses: ./.github/workflows/publish.yml
     with:
       version: ${{ needs.version.outputs.version }}
-    secrets:
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
     permissions:
       contents: read
       id-token: write

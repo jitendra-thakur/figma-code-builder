@@ -1,6 +1,6 @@
 {
   "name": "figma-code-builder",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "AI agent kit that turns Figma designs into Angular, React or Vue code using your design system. Installs agents and skills into .github/ for GitHub Copilot / VS Code.",
   "type": "module",
   "bin": {
